@@ -7,7 +7,7 @@ from fuzzywuzzy import fuzz
 
 st.set_page_config(page_title="SmartToolMatch", layout="wide", page_icon="🚀")
 
-# 1. Modern, readable CSS
+# --- Modern, readable CSS ---
 st.markdown("""
 <style>
 html, body, .stApp {background: #f6f8fa;}
@@ -15,8 +15,8 @@ html, body, .stApp {background: #f6f8fa;}
     background: #fff;
     border-radius: 16px;
     box-shadow: 0 2px 16px #e3e3e3;
-    margin-bottom: 16px;
-    padding: 16px 18px;
+    margin-bottom: 18px;
+    padding: 16px 20px;
     border: 1px solid #e1e5eb;
     transition: box-shadow 0.2s;
 }
@@ -24,7 +24,7 @@ html, body, .stApp {background: #f6f8fa;}
 .workflow-step {
     background: linear-gradient(90deg,#d0eaff 0%,#fff 100%);
     border-radius: 14px;
-    margin-bottom: 10px;
+    margin-bottom: 12px;
     padding: 15px 22px;
     font-size: 20px;
     font-weight: 600;
@@ -61,31 +61,27 @@ html, body, .stApp {background: #f6f8fa;}
   100% {box-shadow: 0 0 0 0 #eaf5ff;}
 }
 h1, h2, h3, h4 {color: #1266c2 !important;}
-/* Dark mode fix for Streamlit Cloud */
 [data-testid="stAppViewContainer"] { background: #f6f8fa; }
 </style>
 """, unsafe_allow_html=True)
 
-# 2. Logo & Title (centered, visible in any theme)
+# --- Logo & Title (uses emoji for bulletproof compatibility)
 st.markdown(
     """
     <div style='text-align:center; margin-bottom:10px'>
-        <img src="https://img.icons8.com/emoji/96/rocket.png" width="60">
+        <span style="font-size:3.0rem;">🚀</span>
         <h1 style='margin-bottom:0;color:#1266c2;font-size:2.4rem;font-family:Segoe UI,Arial;'>
-            SmartToolMatch <span style="font-size:2.1rem;">🚀</span>
+            SmartToolMatch
         </h1>
         <div style='font-size:20px;margin-top:0;color:#333;font-weight:500;'>Your AI Workflow and Tool Discovery Assistant</div>
     </div>
     """, unsafe_allow_html=True
 )
 
-# 3. Sidebar with LinkedIn (uses fallback avatar if img fails)
+# --- Sidebar with bulletproof avatar ---
 with st.sidebar:
-    profile_img_url = "https://media.licdn.com/dms/image/D5603AQHOUycbDkGsvQ/profile-displayphoto-shrink_400_400/0/1706542228345?e=1722470400&v=beta&t=twshjtbBkJG3xIzR6o8BIB8NPjR91FSBUpvCuKQch2E"
-    try:
-        st.image(profile_img_url, width=102)
-    except Exception:
-        st.image("https://img.icons8.com/color/96/user-male-circle--v1.png", width=102)
+    # Use GitHub profile photo as avatar for reliability
+    st.image("https://avatars.githubusercontent.com/u/103022833?s=280&v=4", width=102)
     st.markdown("""
         <div class="linkedin-cta">
             <a href='https://www.linkedin.com/in/vijaykumarbalusa/' target='_blank' style='text-decoration:none;'>
@@ -107,13 +103,13 @@ with st.sidebar:
     st.markdown("---")
     st.info("💡 Try: 'Edit podcast audio', 'Design a presentation', 'Summarize research papers', 'Automate data scraping'")
 
-# 4. Sheets & Gemini Setup
+# --- Sheets & Gemini Setup (use your real link)
 try:
     genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
     gemini_model = genai.GenerativeModel("gemini-1.5-pro")
     service_account_info = json.loads(st.secrets["GSPREAD_SERVICE_ACCOUNT"])
     gc = gspread.service_account_from_dict(service_account_info)
-    SHEET_URL = "https://docs.google.com/spreadsheets/d/13KVDHGDG7xITg7gLor1LphhSHJEI-_LGmy3NDUVDNi8/edit?usp=sharing"  # <--- Your sheet here!
+    SHEET_URL = "https://docs.google.com/spreadsheets/d/13KVDHGDG7xITg7gLor1LphhSHJEI-_LGmy3NDUVDNi8"
     worksheet = gc.open_by_url(SHEET_URL).sheet1
     tools_data = worksheet.get_all_records()
     tools_df = pd.DataFrame(tools_data)
@@ -121,7 +117,7 @@ except Exception as e:
     st.error(f"Error loading AI tools: {e}")
     st.stop()
 
-# 5. User Inputs (high contrast)
+# --- User Inputs
 user_goal = st.text_input(
     "What do you want to achieve?",
     placeholder="e.g., Automate blog writing, Create a video, Generate marketing images..."
@@ -129,7 +125,7 @@ user_goal = st.text_input(
 tool_type_filter = st.selectbox("Filter by Tool Type:", options=["All"] + sorted(tools_df["Type"].dropna().unique()))
 search_tool_name = st.text_input("Search tools by name (optional):")
 
-# 6. Workflow Steps and Tool Cards
+# --- Workflow Steps and Tool Cards (guaranteed: no raw HTML, always fallback to universal tools)
 if user_goal:
     with st.spinner("AI is crafting your workflow..."):
         prompt = f"Break down the following user goal into 3-6 actionable workflow steps. Goal: {user_goal}"
@@ -172,6 +168,7 @@ if user_goal:
         matched_tools = match_tools(step, tools_df)
         universal_tools = tools_df[tools_df["Type"].str.lower() == "universal"]
 
+        # Fallback: if nothing matched, always show universal tools at minimum
         if tool_type_filter != "All":
             matched_tools = matched_tools[matched_tools["Type"] == tool_type_filter]
             universal_tools = universal_tools[universal_tools["Type"] == tool_type_filter]
@@ -183,7 +180,7 @@ if user_goal:
 
         if not tools_to_show.empty:
             for _, row in tools_to_show.iterrows():
-                # PNG/JPG logo images for best compatibility
+                # Only use PNG/JPG for bulletproof logos
                 logo_url = ""
                 name = row["Tool Name"].lower()
                 if name == "chatgpt":
@@ -216,7 +213,7 @@ if user_goal:
                     unsafe_allow_html=True
                 )
         else:
-            st.warning("No tools found for this step. Try adjusting filter or search.")
+            st.warning("No tools found for this step. Try adjusting filter or search. Universal tools always available above.")
 
 else:
     st.info("Enter your goal above to get started!")
