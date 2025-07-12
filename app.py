@@ -5,60 +5,65 @@ import gspread
 import json
 from fuzzywuzzy import fuzz
 
-st.set_page_config(page_title="SmartToolMatch", layout="wide", page_icon="🚀")
+st.set_page_config(page_title="SmartToolMatch", layout="wide")
+st.title("🔥 SmartToolMatch – Your AI Workflow Assistant")
 
-st.title("🚀 SmartToolMatch")
-st.caption("Your AI Workflow and Tool Discovery Assistant")
+# --- 1. Configure Gemini API (make sure to use gemini-1.5-pro)
+genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
+gemini_model = genai.GenerativeModel("gemini-1.5-pro")
 
-# ---- Sidebar ----
-with st.sidebar:
-    st.image("https://avatars.githubusercontent.com/u/103022833?s=280&v=4", width=100)
-    st.write("Built by [Vijay Kumar Balusa](https://www.linkedin.com/in/vijaykumarbalusa/)")
-    st.info("Try: 'Edit podcast audio', 'Design a presentation', 'Automate data scraping'")
-
-# ---- Sheets & Gemini Setup ----
+# --- 2. Connect to Google Sheets
 try:
-    genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
-    gemini_model = genai.GenerativeModel("gemini-1.5-pro")
     service_account_info = json.loads(st.secrets["GSPREAD_SERVICE_ACCOUNT"])
     gc = gspread.service_account_from_dict(service_account_info)
-    SHEET_URL = "https://docs.google.com/spreadsheets/d/13KVDHGDG7xITg7gLor1LphhSHJEI-_LGmy3NDUVDNi8"
+    # ⚠️ Replace with your actual Sheet URL!
+    SHEET_URL = "https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID"
     worksheet = gc.open_by_url(SHEET_URL).sheet1
     tools_data = worksheet.get_all_records()
     tools_df = pd.DataFrame(tools_data)
 except Exception as e:
-    st.error(f"Error loading AI tools: {e}")
+    st.error(f"Google Sheets connection failed: {e}")
     st.stop()
 
-# ---- User Inputs ----
-user_goal = st.text_input("What do you want to achieve?", placeholder="e.g., Create a video, Generate blog ideas, Summarize research")
+# --- 3. User Inputs
+user_goal = st.text_input(
+    "What do you want to achieve? (e.g., 'Create a content marketing plan')",
+    placeholder="Describe your goal, e.g. 'Plan a trip to Europe'"
+)
+
 tool_type_filter = st.selectbox("Filter by Tool Type:", options=["All"] + sorted(tools_df["Type"].dropna().unique()))
 search_tool_name = st.text_input("Search tools by name (optional):")
 
-# ---- Workflow & Tool Display ----
+# --- 4. Process Input and Generate Workflow
 if user_goal:
-    with st.spinner("Gemini is generating your workflow..."):
+    with st.spinner("Generating workflow steps with Gemini..."):
         prompt = f"Break down the following user goal into 3-6 actionable workflow steps. Goal: {user_goal}"
         try:
             response = gemini_model.generate_content(prompt)
-            steps = [s.strip().lstrip("1234567890. ").capitalize() for s in response.text.split("\n") if s.strip()]
+            steps = [s.strip().lstrip("1234567890. ").capitalize() 
+                     for s in response.text.split("\n") if s.strip()]
             if not steps:
                 raise ValueError("Gemini response is empty. Try rephrasing your goal.")
         except Exception as e:
             st.error(f"Gemini API error: {e}")
             st.stop()
 
-    st.subheader("📝 Your Personalized Workflow & AI Tools")
-
+    st.header("Your Personalized Workflow & AI Tools")
     for i, step in enumerate(steps, 1):
-        st.markdown(f"**{i} {step}**")
-        # --- Matching ---
+        st.subheader(f"Step {i}: {step}")
+
+        # --- Tool matching: exact and fuzzy, robust to PatternError
         def match_tools(step, tools_df):
             first_word = step.split()[0].lower() if step.split() else ""
             if first_word:
-                matches = tools_df[tools_df["Category"].str.lower().str.contains(first_word, na=False, regex=False)]
+                try:
+                    matches = tools_df[tools_df["Category"].str.lower().str.contains(first_word, na=False, regex=False)]
+                except Exception:
+                    matches = pd.DataFrame()  # Fail safe if PatternError
             else:
                 matches = pd.DataFrame()
+
+            # If no exact matches, use fuzzy matching on Category
             if matches.empty:
                 threshold = 60
                 tools_df["fuzz_ratio"] = tools_df["Category"].apply(
@@ -70,9 +75,12 @@ if user_goal:
         matched_tools = match_tools(step, tools_df)
         universal_tools = tools_df[tools_df["Type"].str.lower() == "universal"]
 
+        # Filter by tool type if not "All"
         if tool_type_filter != "All":
             matched_tools = matched_tools[matched_tools["Type"] == tool_type_filter]
             universal_tools = universal_tools[universal_tools["Type"] == tool_type_filter]
+
+        # Filter by tool name search if provided
         if search_tool_name:
             matched_tools = matched_tools[matched_tools["Tool Name"].str.lower().str.contains(search_tool_name.lower(), na=False)]
             universal_tools = universal_tools[universal_tools["Tool Name"].str.lower().str.contains(search_tool_name.lower(), na=False)]
@@ -82,13 +90,13 @@ if user_goal:
         if not tools_to_show.empty:
             for _, row in tools_to_show.iterrows():
                 st.markdown(
-                    f"- [{row['Tool Name']}]({row['Link']}) ({row['Type']} | {row['Category']}): {row['Description']}"
+                    f"- [{row['Tool Name']}]({row['Link']}) — *{row['Type']}*<br>{row['Description']}",
+                    unsafe_allow_html=True
                 )
         else:
-            st.warning("No tools found for this step. Try adjusting the filter or search.")
+            st.warning("No tools found for this step. Try changing the filter or search.")
 
 else:
     st.info("Enter your goal above to get started!")
 
-st.markdown("---")
-st.caption("© 2024 SmartToolMatch • Powered by Gemini, Google Sheets, and Streamlit")
+st.caption("© 2025 SmartToolMatch • Powered by Gemini, Google Sheets, and Streamlit")
