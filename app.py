@@ -7,12 +7,10 @@ from fuzzywuzzy import fuzz
 
 st.set_page_config(page_title="SmartToolMatch", layout="wide", page_icon="🚀")
 
-# -- Custom CSS for Modern Look --
+# Custom CSS for Modern Look & Card Styling
 st.markdown(
     """
     <style>
-    body {font-family: 'Inter', 'Segoe UI', Arial;}
-    .stApp {background: #f5f6fa;}
     .tool-card {
         background: white;
         border-radius: 18px;
@@ -66,7 +64,7 @@ st.markdown(
     """, unsafe_allow_html=True
 )
 
-# LOGO & TITLE
+# --- Logo & Title
 st.markdown(
     """
     <div style='text-align:center; margin-bottom:16px'>
@@ -77,9 +75,14 @@ st.markdown(
     """, unsafe_allow_html=True
 )
 
-# SIDEBAR
+# --- SIDEBAR
 with st.sidebar:
-    st.image("https://media.licdn.com/dms/image/D5603AQHOUycbDkGsvQ/profile-displayphoto-shrink_400_400/0/1706542228345?e=1722470400&v=beta&t=twshjtbBkJG3xIzR6o8BIB8NPjR91FSBUpvCuKQch2E", width=108)
+    # If your LinkedIn image link breaks, use a placeholder
+    profile_img_url = "https://media.licdn.com/dms/image/D5603AQHOUycbDkGsvQ/profile-displayphoto-shrink_400_400/0/1706542228345?e=1722470400&v=beta&t=twshjtbBkJG3xIzR6o8BIB8NPjR91FSBUpvCuKQch2E"
+    try:
+        st.image(profile_img_url, width=108)
+    except Exception:
+        st.image("https://img.icons8.com/color/96/user-male-circle--v1.png", width=108)
     st.markdown(
         """
         <div class="linkedin-cta">
@@ -102,13 +105,13 @@ with st.sidebar:
     st.markdown("---")
     st.info("💡 Try: 'Edit podcast audio', 'Design a presentation', 'Summarize research papers', 'Automate data scraping'")
 
-# GOOGLE SHEETS & GEMINI SETUP
+# --- GOOGLE SHEETS & GEMINI SETUP
 try:
     genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
     gemini_model = genai.GenerativeModel("gemini-1.5-pro")
     service_account_info = json.loads(st.secrets["GSPREAD_SERVICE_ACCOUNT"])
     gc = gspread.service_account_from_dict(service_account_info)
-    SHEET_URL = "https://docs.google.com/spreadsheets/d/13KVDHGDG7xITg7gLor1LphhSHJEI-_LGmy3NDUVDNi8/edit?usp=sharing"  # <-- Put your real sheet link here!
+    SHEET_URL = "https://docs.google.com/spreadsheets/d/13KVDHGDG7xITg7gLor1LphhSHJEI-_LGmy3NDUVDNi8/edit?usp=sharing"  # <-- Put your sheet link here!
     worksheet = gc.open_by_url(SHEET_URL).sheet1
     tools_data = worksheet.get_all_records()
     tools_df = pd.DataFrame(tools_data)
@@ -116,7 +119,7 @@ except Exception as e:
     st.error(f"Error loading AI tools: {e}")
     st.stop()
 
-# USER INPUTS
+# --- USER INPUTS
 user_goal = st.text_input(
     "What do you want to achieve?",
     placeholder="e.g., Automate blog writing, Create a video, Generate marketing images..."
@@ -124,7 +127,7 @@ user_goal = st.text_input(
 tool_type_filter = st.selectbox("Filter by Tool Type:", options=["All"] + sorted(tools_df["Type"].dropna().unique()))
 search_tool_name = st.text_input("Search tools by name (optional):")
 
-# WORKFLOW
+# --- WORKFLOW
 if user_goal:
     with st.spinner("AI is crafting your workflow..."):
         prompt = f"Break down the following user goal into 3-6 actionable workflow steps. Goal: {user_goal}"
@@ -179,17 +182,25 @@ if user_goal:
         if not tools_to_show.empty:
             for _, row in tools_to_show.iterrows():
                 logo_url = ""
-                if row["Tool Name"].lower() == "chatgpt":
+                # Add as many logos as you wish here!
+                name = row["Tool Name"].lower()
+                if name == "chatgpt":
                     logo_url = "https://cdn.openai.com/chatgpt/favicon-32x32.png"
-                elif row["Tool Name"].lower() == "gemini":
+                elif name == "gemini":
                     logo_url = "https://www.gstatic.com/lamda/images/gemini-icon-64.png"
-                elif row["Tool Name"].lower() == "claude":
+                elif name == "claude":
                     logo_url = "https://avatars.githubusercontent.com/u/103022833?s=280&v=4"
-                elif row["Tool Name"].lower() == "midjourney":
+                elif name == "midjourney":
                     logo_url = "https://cdn.worldvectorlogo.com/logos/midjourney.svg"
-                elif row["Tool Name"].lower() == "notion ai":
+                elif name == "notion ai":
                     logo_url = "https://cdn.icon-icons.com/icons2/3914/PNG/512/notion_logo_icon_249965.png"
-                # ...add more as you like!
+                elif name == "dall·e" or name == "dalle":
+                    logo_url = "https://cdn.openai.com/dall-e/favicon.ico"
+                elif name == "otter.ai":
+                    logo_url = "https://pbs.twimg.com/profile_images/1622941428725399552/ywKg5jDQ_400x400.jpg"
+                elif name == "zapier ai":
+                    logo_url = "https://images.g2crowd.com/uploads/product/image/social_landscape/social_landscape_89d1a5cfa7d35f9f681c2cb208f2a67d/zapier.png"
+                # Add more as you like!
 
                 st.markdown(
                     f"""
