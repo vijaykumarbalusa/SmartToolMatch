@@ -6,18 +6,17 @@ import json
 from fuzzywuzzy import fuzz
 
 st.set_page_config(page_title="SmartToolMatch", layout="wide")
-
 st.title("🔥 SmartToolMatch – Your AI Workflow Assistant")
 
-# --- 1. Configure Gemini API with the correct model
+# --- 1. Configure Gemini API (make sure to use gemini-1.5-pro)
 genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
-gemini_model = genai.GenerativeModel("gemini-1.5-pro")  # <- Use only this!
+gemini_model = genai.GenerativeModel("gemini-1.5-pro")
 
 # --- 2. Connect to Google Sheets
 try:
     service_account_info = json.loads(st.secrets["GSPREAD_SERVICE_ACCOUNT"])
     gc = gspread.service_account_from_dict(service_account_info)
-    # ⚠️ Replace this with your actual Sheet URL or name!
+    # ⚠️ Replace with your actual Sheet URL!
     SHEET_URL = "https://docs.google.com/spreadsheets/d/13KVDHGDG7xITg7gLor1LphhSHJEI-_LGmy3NDUVDNi8/edit?usp=sharing"
     worksheet = gc.open_by_url(SHEET_URL).sheet1
     tools_data = worksheet.get_all_records()
@@ -53,10 +52,16 @@ if user_goal:
     for i, step in enumerate(steps, 1):
         st.subheader(f"Step {i}: {step}")
 
-        # --- Tool matching: exact and fuzzy
+        # --- Tool matching: exact and fuzzy, robust to PatternError
         def match_tools(step, tools_df):
-            # First, exact match by Category
-            matches = tools_df[tools_df["Category"].str.lower().str.contains(step.split()[0].lower(), na=False)]
+            first_word = step.split()[0].lower() if step.split() else ""
+            if first_word:
+                try:
+                    matches = tools_df[tools_df["Category"].str.lower().str.contains(first_word, na=False, regex=False)]
+                except Exception:
+                    matches = pd.DataFrame()  # Fail safe if PatternError
+            else:
+                matches = pd.DataFrame()
 
             # If no exact matches, use fuzzy matching on Category
             if matches.empty:
