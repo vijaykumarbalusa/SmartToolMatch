@@ -17,7 +17,7 @@ try:
     service_account_info = json.loads(st.secrets["GSPREAD_SERVICE_ACCOUNT"])
     gc = gspread.service_account_from_dict(service_account_info)
     # ⚠️ Replace with your actual Sheet URL!
-    SHEET_URL = "https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID"
+    SHEET_URL = "https://docs.google.com/spreadsheets/d/13KVDHGDG7xITg7gLor1LphhSHJEI-_LGmy3NDUVDNi8/edit?usp=sharing"
     worksheet = gc.open_by_url(SHEET_URL).sheet1
     tools_data = worksheet.get_all_records()
     tools_df = pd.DataFrame(tools_data)
