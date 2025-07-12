@@ -7,111 +7,113 @@ from fuzzywuzzy import fuzz
 
 st.set_page_config(page_title="SmartToolMatch", layout="wide", page_icon="🚀")
 
-# Custom CSS for Modern Look & Card Styling
-st.markdown(
-    """
-    <style>
-    .tool-card {
-        background: white;
-        border-radius: 18px;
-        box-shadow: 1px 2px 14px #ececec;
-        margin-bottom: 18px;
-        padding: 18px 20px;
-        transition: box-shadow 0.2s;
-        border: 1px solid #f3f3f3;
-    }
-    .tool-card:hover {box-shadow: 2px 4px 22px #cce7ff;}
-    .workflow-step {
-        background: linear-gradient(90deg,#1e90ff14 0%,#e3eefd 100%);
-        border-radius: 16px;
-        margin-bottom: 10px;
-        padding: 15px 24px;
-        font-size: 21px;
-        font-weight: 600;
-        color: #2266bb;
-        box-shadow: 1px 2px 10px #ececec;
-    }
-    .step-number {
-        background: #1e90ff;
-        color: white;
-        border-radius: 50%;
-        width: 32px;
-        height: 32px;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: bold;
-        margin-right: 12px;
-        font-size: 17px;
-    }
-    .linkedin-cta {
-        background: #eaf5ff;
-        color: #1567ad;
-        border-radius: 10px;
-        padding: 10px;
-        text-align:center;
-        font-size:17px;
-        margin-bottom:16px;
-        font-weight: 500;
-        animation: pulse 2s infinite;
-    }
-    @keyframes pulse {
-      0% {box-shadow: 0 0 0 0 #85baff;}
-      70% {box-shadow: 0 0 0 8px #b6e0ff88;}
-      100% {box-shadow: 0 0 0 0 #eaf5ff;}
-    }
-    </style>
-    """, unsafe_allow_html=True
-)
+# 1. Modern, readable CSS
+st.markdown("""
+<style>
+html, body, .stApp {background: #f6f8fa;}
+.tool-card {
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 2px 16px #e3e3e3;
+    margin-bottom: 16px;
+    padding: 16px 18px;
+    border: 1px solid #e1e5eb;
+    transition: box-shadow 0.2s;
+}
+.tool-card:hover {box-shadow: 0 4px 28px #aee3fd44;}
+.workflow-step {
+    background: linear-gradient(90deg,#d0eaff 0%,#fff 100%);
+    border-radius: 14px;
+    margin-bottom: 10px;
+    padding: 15px 22px;
+    font-size: 20px;
+    font-weight: 600;
+    color: #1760a7;
+    box-shadow: 1px 2px 10px #e4ecf7;
+}
+.step-number {
+    background: #1976d2;
+    color: #fff;
+    border-radius: 50%;
+    width: 28px;
+    height: 28px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    margin-right: 10px;
+    font-size: 16px;
+}
+.linkedin-cta {
+    background: #eaf5ff;
+    color: #1567ad;
+    border-radius: 10px;
+    padding: 10px;
+    text-align:center;
+    font-size:16px;
+    margin-bottom:14px;
+    font-weight: 500;
+    animation: pulse 2s infinite;
+}
+@keyframes pulse {
+  0% {box-shadow: 0 0 0 0 #8ddcff;}
+  70% {box-shadow: 0 0 0 8px #b6e0ff88;}
+  100% {box-shadow: 0 0 0 0 #eaf5ff;}
+}
+h1, h2, h3, h4 {color: #1266c2 !important;}
+/* Dark mode fix for Streamlit Cloud */
+[data-testid="stAppViewContainer"] { background: #f6f8fa; }
+</style>
+""", unsafe_allow_html=True)
 
-# --- Logo & Title
+# 2. Logo & Title (centered, visible in any theme)
 st.markdown(
     """
-    <div style='text-align:center; margin-bottom:16px'>
-        <img src="https://img.icons8.com/emoji/96/rocket.png" width="64">
-        <h1 style='margin-bottom:0;color:#1966d2;font-size:2.7rem;font-family:Segoe UI,Arial;'>SmartToolMatch 🚀</h1>
-        <div style='font-size:23px;margin-top:0;color:#222;font-weight:500;'>Your AI Workflow and Tool Discovery Assistant</div>
+    <div style='text-align:center; margin-bottom:10px'>
+        <img src="https://img.icons8.com/emoji/96/rocket.png" width="60">
+        <h1 style='margin-bottom:0;color:#1266c2;font-size:2.4rem;font-family:Segoe UI,Arial;'>
+            SmartToolMatch <span style="font-size:2.1rem;">🚀</span>
+        </h1>
+        <div style='font-size:20px;margin-top:0;color:#333;font-weight:500;'>Your AI Workflow and Tool Discovery Assistant</div>
     </div>
     """, unsafe_allow_html=True
 )
 
-# --- SIDEBAR
+# 3. Sidebar with LinkedIn (uses fallback avatar if img fails)
 with st.sidebar:
-    # If your LinkedIn image link breaks, use a placeholder
     profile_img_url = "https://media.licdn.com/dms/image/D5603AQHOUycbDkGsvQ/profile-displayphoto-shrink_400_400/0/1706542228345?e=1722470400&v=beta&t=twshjtbBkJG3xIzR6o8BIB8NPjR91FSBUpvCuKQch2E"
     try:
-        st.image(profile_img_url, width=108)
+        st.image(profile_img_url, width=102)
     except Exception:
-        st.image("https://img.icons8.com/color/96/user-male-circle--v1.png", width=108)
-    st.markdown(
-        """
+        st.image("https://img.icons8.com/color/96/user-male-circle--v1.png", width=102)
+    st.markdown("""
         <div class="linkedin-cta">
             <a href='https://www.linkedin.com/in/vijaykumarbalusa/' target='_blank' style='text-decoration:none;'>
-            👉 Connect with the creator on <b>LinkedIn</b>!<br>
-            <span style='font-size:15px;'>Let's network and talk AI projects!</span>
+            👉 Connect with the creator on <b>LinkedIn</b>!
+            <br>
+            <span style='font-size:14px;'>Let's network and talk AI projects!</span>
             </a>
         </div>
-        """, unsafe_allow_html=True
-    )
+    """, unsafe_allow_html=True)
     st.markdown("---")
     st.markdown("""
-    <span style='font-size:19px;font-weight:500;color:#1966d2;'>How does it work?</span>
-    <ul style='font-size:15px;margin-left:-14px;'>
-        <li>Describe your goal (e.g. "Create a marketing campaign")</li>
-        <li>Get actionable workflow steps</li>
-        <li>Discover best-matched AI tools for every step</li>
-    </ul>
+        <span style='font-size:17px;font-weight:500;color:#1666cc;'>How does it work?</span>
+        <ul style='font-size:14px;margin-left:-10px;'>
+            <li>Describe your goal (e.g. "Generate marketing images")</li>
+            <li>Get step-by-step workflow, each step explained</li>
+            <li>Discover best-matched AI tools for every step</li>
+        </ul>
     """, unsafe_allow_html=True)
     st.markdown("---")
     st.info("💡 Try: 'Edit podcast audio', 'Design a presentation', 'Summarize research papers', 'Automate data scraping'")
 
-# --- GOOGLE SHEETS & GEMINI SETUP
+# 4. Sheets & Gemini Setup
 try:
     genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
     gemini_model = genai.GenerativeModel("gemini-1.5-pro")
     service_account_info = json.loads(st.secrets["GSPREAD_SERVICE_ACCOUNT"])
     gc = gspread.service_account_from_dict(service_account_info)
-    SHEET_URL = "https://docs.google.com/spreadsheets/d/13KVDHGDG7xITg7gLor1LphhSHJEI-_LGmy3NDUVDNi8/edit?usp=sharing"  # <-- Put your sheet link here!
+    SHEET_URL = "https://docs.google.com/spreadsheets/d/13KVDHGDG7xITg7gLor1LphhSHJEI-_LGmy3NDUVDNi8/edit?usp=sharing"  # <--- Your sheet here!
     worksheet = gc.open_by_url(SHEET_URL).sheet1
     tools_data = worksheet.get_all_records()
     tools_df = pd.DataFrame(tools_data)
@@ -119,7 +121,7 @@ except Exception as e:
     st.error(f"Error loading AI tools: {e}")
     st.stop()
 
-# --- USER INPUTS
+# 5. User Inputs (high contrast)
 user_goal = st.text_input(
     "What do you want to achieve?",
     placeholder="e.g., Automate blog writing, Create a video, Generate marketing images..."
@@ -127,7 +129,7 @@ user_goal = st.text_input(
 tool_type_filter = st.selectbox("Filter by Tool Type:", options=["All"] + sorted(tools_df["Type"].dropna().unique()))
 search_tool_name = st.text_input("Search tools by name (optional):")
 
-# --- WORKFLOW
+# 6. Workflow Steps and Tool Cards
 if user_goal:
     with st.spinner("AI is crafting your workflow..."):
         prompt = f"Break down the following user goal into 3-6 actionable workflow steps. Goal: {user_goal}"
@@ -141,7 +143,7 @@ if user_goal:
             st.error(f"Gemini API error: {e}")
             st.stop()
 
-    st.markdown("### 📝 <span style='color:#1966d2;font-size:1.2em;'>Your Personalized Workflow & AI Tools</span>", unsafe_allow_html=True)
+    st.markdown("### 📝 <span style='color:#1166d1;font-size:1.13em;'>Your Personalized Workflow & AI Tools</span>", unsafe_allow_html=True)
 
     for i, step in enumerate(steps, 1):
         st.markdown(f"""
@@ -181,8 +183,8 @@ if user_goal:
 
         if not tools_to_show.empty:
             for _, row in tools_to_show.iterrows():
+                # PNG/JPG logo images for best compatibility
                 logo_url = ""
-                # Add as many logos as you wish here!
                 name = row["Tool Name"].lower()
                 if name == "chatgpt":
                     logo_url = "https://cdn.openai.com/chatgpt/favicon-32x32.png"
@@ -191,22 +193,22 @@ if user_goal:
                 elif name == "claude":
                     logo_url = "https://avatars.githubusercontent.com/u/103022833?s=280&v=4"
                 elif name == "midjourney":
-                    logo_url = "https://cdn.worldvectorlogo.com/logos/midjourney.svg"
+                    logo_url = "https://cdn.icon-icons.com/icons2/3914/PNG/512/midjourney_logo_icon_249964.png"
                 elif name == "notion ai":
                     logo_url = "https://cdn.icon-icons.com/icons2/3914/PNG/512/notion_logo_icon_249965.png"
-                elif name == "dall·e" or name == "dalle":
+                elif name in ["dall·e", "dalle"]:
                     logo_url = "https://cdn.openai.com/dall-e/favicon.ico"
                 elif name == "otter.ai":
                     logo_url = "https://pbs.twimg.com/profile_images/1622941428725399552/ywKg5jDQ_400x400.jpg"
                 elif name == "zapier ai":
-                    logo_url = "https://images.g2crowd.com/uploads/product/image/social_landscape/social_landscape_89d1a5cfa7d35f9f681c2cb208f2a67d/zapier.png"
-                # Add more as you like!
+                    logo_url = "https://static.zapier.com/static/images/favicon.png"
+                # ... add more as you like!
 
                 st.markdown(
                     f"""
                     <div class='tool-card'>
                         {'<img src="'+logo_url+'" width="28" style="vertical-align:middle;margin-right:7px;">' if logo_url else ''}
-                        <b><a href="{row['Link']}" target="_blank">{row['Tool Name']}</a></b>
+                        <b><a href="{row['Link']}" target="_blank" style="color:#1166cc;">{row['Tool Name']}</a></b>
                         <br><span style="color:#2668bb;font-size:15px;"><i>Type:</i> {row['Type']} &nbsp;|&nbsp; <i>Category:</i> {row['Category']}</span>
                         <br>{row['Description']}
                     </div>
