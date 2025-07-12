@@ -206,8 +206,9 @@ if user_goal:
                     <br>{row['Description']}
                 </div>
                 """
+                # -- FINAL, ONLY THIS: Renders as a styled card --
+                st.markdown(tool_card_html, unsafe_allow_html=True)
 
-                st.markdown(tool_card_html, unsafe_allow_html=True)  # ONLY this line! Never st.code or st.write for cards!
         else:
             st.warning("No tools found for this step. Try adjusting filter or search. Universal tools always available above.")
 
