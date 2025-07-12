@@ -65,7 +65,7 @@ h1, h2, h3, h4 {color: #1266c2 !important;}
 </style>
 """, unsafe_allow_html=True)
 
-# --- Logo & Title (uses emoji for bulletproof compatibility)
+# --- Logo & Title (emoji for compatibility)
 st.markdown(
     """
     <div style='text-align:center; margin-bottom:10px'>
@@ -78,9 +78,8 @@ st.markdown(
     """, unsafe_allow_html=True
 )
 
-# --- Sidebar with bulletproof avatar ---
+# --- Sidebar with avatar ---
 with st.sidebar:
-    # Use GitHub profile photo as avatar for reliability
     st.image("https://avatars.githubusercontent.com/u/103022833?s=280&v=4", width=102)
     st.markdown("""
         <div class="linkedin-cta">
@@ -103,7 +102,7 @@ with st.sidebar:
     st.markdown("---")
     st.info("💡 Try: 'Edit podcast audio', 'Design a presentation', 'Summarize research papers', 'Automate data scraping'")
 
-# --- Sheets & Gemini Setup (use your real link)
+# --- Sheets & Gemini Setup ---
 try:
     genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
     gemini_model = genai.GenerativeModel("gemini-1.5-pro")
@@ -117,7 +116,7 @@ except Exception as e:
     st.error(f"Error loading AI tools: {e}")
     st.stop()
 
-# --- User Inputs
+# --- User Inputs ---
 user_goal = st.text_input(
     "What do you want to achieve?",
     placeholder="e.g., Automate blog writing, Create a video, Generate marketing images..."
@@ -125,7 +124,7 @@ user_goal = st.text_input(
 tool_type_filter = st.selectbox("Filter by Tool Type:", options=["All"] + sorted(tools_df["Type"].dropna().unique()))
 search_tool_name = st.text_input("Search tools by name (optional):")
 
-# --- Workflow Steps and Tool Cards (guaranteed: no raw HTML, always fallback to universal tools)
+# --- Workflow Steps and Tool Cards (GUARANTEED: markdown only, never code blocks!) ---
 if user_goal:
     with st.spinner("AI is crafting your workflow..."):
         prompt = f"Break down the following user goal into 3-6 actionable workflow steps. Goal: {user_goal}"
@@ -180,7 +179,7 @@ if user_goal:
 
         if not tools_to_show.empty:
             for _, row in tools_to_show.iterrows():
-                # Only use PNG/JPG for bulletproof logos
+                # Only use PNG/JPG for logos
                 logo_url = ""
                 name = row["Tool Name"].lower()
                 if name == "chatgpt":
@@ -201,17 +200,16 @@ if user_goal:
                     logo_url = "https://static.zapier.com/static/images/favicon.png"
                 # ... add more as you like!
 
-                st.markdown(
-                    f"""
+                tool_card_html = f"""
                     <div class='tool-card'>
                         {'<img src="'+logo_url+'" width="28" style="vertical-align:middle;margin-right:7px;">' if logo_url else ''}
                         <b><a href="{row['Link']}" target="_blank" style="color:#1166cc;">{row['Tool Name']}</a></b>
                         <br><span style="color:#2668bb;font-size:15px;"><i>Type:</i> {row['Type']} &nbsp;|&nbsp; <i>Category:</i> {row['Category']}</span>
                         <br>{row['Description']}
                     </div>
-                    """,
-                    unsafe_allow_html=True
-                )
+                """
+
+                st.markdown(tool_card_html, unsafe_allow_html=True)  # <-- ONLY this line!
         else:
             st.warning("No tools found for this step. Try adjusting filter or search. Universal tools always available above.")
 
