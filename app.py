@@ -108,7 +108,7 @@ try:
     gemini_model = genai.GenerativeModel("gemini-1.5-pro")
     service_account_info = json.loads(st.secrets["GSPREAD_SERVICE_ACCOUNT"])
     gc = gspread.service_account_from_dict(service_account_info)
-    SHEET_URL = "https://docs.google.com/spreadsheets/d/13KVDHGDG7xITg7gLor1LphhSHJEI-_LGmy3NDUVDNi8/edit?usp=sharing"  
+    SHEET_URL = "https://docs.google.com/spreadsheets/d/13KVDHGDG7xITg7gLor1LphhSHJEI-_LGmy3NDUVDNi8/edit?usp=sharing"  # <-- Put your real sheet link here!
     worksheet = gc.open_by_url(SHEET_URL).sheet1
     tools_data = worksheet.get_all_records()
     tools_df = pd.DataFrame(tools_data)
