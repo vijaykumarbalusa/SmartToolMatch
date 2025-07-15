@@ -6,39 +6,41 @@ import json
 
 st.set_page_config(page_title="SmartToolMatch", layout="wide", page_icon=":rocket:")
 
-# --- App Logo/Branding ---
+# -------- Sidebar (Visibly fixed for Dark Mode!) --------
+with st.sidebar:
+    st.markdown("""
+        <div style="background: linear-gradient(135deg,#252550,#454593 80%); border-radius:16px; padding:18px 14px 14px 14px;">
+            <div style="display:flex;align-items:center;">
+                <img src="https://avatars.githubusercontent.com/u/103022833?s=280&v=4" width="64" style="border-radius:14px;margin-right:12px;border:2px solid #fff;">
+                <div>
+                    <span style="color:#fff;font-weight:bold;">Built by <a href="https://www.linkedin.com/in/vijay-kumar-bvk" style="color:#ffd858;" target="_blank">Vijay Kumar Balusa</a></span>
+                    <div style="font-size:13px;color:#ddd;">Connect with me on LinkedIn!</div>
+                </div>
+            </div>
+            <hr style="margin:12px 0 8px 0; border:0; border-top:1.5px solid #666;">
+            <div style="font-size:15px;color:#eaeaea;font-weight:bold;padding-bottom:5px;">About SmartToolMatch</div>
+            <ul style="color:#f4f4f4;font-size:14px;line-height:1.6;margin-left:-18px;">
+                <li>Find the <b>best AI apps</b> for any goal</li>
+                <li>See <b>2 top apps</b> in Free, Paid, Universal categories</li>
+                <li>Instant answers + full workflow</li>
+                <li>Powered by Gemini, Streamlit, and Google Sheets</li>
+            </ul>
+            <div style="background:#2a2a44;padding:10px 10px 8px 10px;border-radius:9px;margin-top:7px;color:#eee;">
+                💡 <b>Try:</b> <i>'Plan a trip', 'Generate a resume', 'Automate my marketing'</i>
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
+
+# ----------- Main Title / Branding -----------
 st.markdown("""
 <div style='text-align:center; margin-bottom:18px'>
     <img src="https://cdn-icons-png.flaticon.com/512/3468/3468379.png" width="70" style="margin-bottom:-10px;">
     <h1 style='margin-bottom:0;color:#1266c2;font-size:2.3rem;font-family:Segoe UI,Arial;'>SmartToolMatch</h1>
-    <div style='font-size:18px;margin-top:0;color:#333;font-weight:500;'>Your AI App Discovery & Guidance Engine</div>
+    <div style='font-size:18px;margin-top:0;color:#bbb;font-weight:500;'>Your AI App Discovery & Guidance Engine</div>
 </div>
 """, unsafe_allow_html=True)
 
-# --- Sidebar ---
-with st.sidebar:
-    st.image("https://avatars.githubusercontent.com/u/103022833?s=280&v=4", width=88)
-    st.markdown(
-        "<b>Built by</b> [Vijay Kumar Balusa](https://www.linkedin.com/in/vijay-kumar-bvk)<br>_Let's connect on LinkedIn!_",
-        unsafe_allow_html=True
-    )
-    st.markdown("---")
-    st.markdown(
-        """
-        <div style="font-size:15px;padding-bottom:2px;"><b>About SmartToolMatch</b></div>
-        <div style="color:#333;font-size:14px;">
-        <ul style="margin-left:-14px;">
-        <li>Find the <b>top AI apps</b> for any goal</li>
-        <li>See “Best Free”, “Best Paid”, “Best Universal” – up to 2 tools per category</li>
-        <li>Built with Gemini, Google Sheets, and Streamlit</li>
-        </ul>
-        </div>
-        """, unsafe_allow_html=True
-    )
-    st.markdown("---")
-    st.info("💡 Try: 'Plan a trip', 'Write a blog', 'Summarize research', etc.")
-
-# --- Sheets & Gemini Setup ---
+# --------- Load Data & Gemini ----------
 genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
 gemini_model = genai.GenerativeModel("gemini-1.5-pro")
 try:
@@ -52,15 +54,15 @@ except Exception as e:
     st.error(f"Google Sheets connection failed: {e}")
     st.stop()
 
-# --- Input ---
+# --------------- Input ---------------
 st.markdown("### What do you want to achieve?")
-user_goal = st.text_input("Describe your task or goal (e.g., Plan a trip, Generate a resume, Create a presentation)")
+user_goal = st.text_input(
+    "Describe your task or goal (e.g., Plan a trip, Generate a resume, Create a presentation)")
 
 def get_top_tools(category, num=2):
     filtered = tools_df[tools_df['Type'].str.lower().str.contains(category.lower(), na=False)].copy()
     if filtered.empty:
         return []
-    # Simple relevance: look for user_goal keyword in 'Best For' or 'Short Description'
     score = (
         filtered['Best For'].str.lower().str.contains(user_goal.lower(), na=False).astype(int)
         + filtered['Short Description'].str.lower().str.contains(user_goal.lower(), na=False).astype(int)
@@ -69,6 +71,7 @@ def get_top_tools(category, num=2):
     top_tools = filtered.sort_values("score", ascending=False).head(num)
     return [row for _, row in top_tools.iterrows()]
 
+# --------------- Best App Recommendation ---------------
 if user_goal:
     st.markdown("#### 🔎 Best App Recommendation")
     # Task overview (Gemini)
@@ -76,7 +79,7 @@ if user_goal:
         task_overview = gemini_model.generate_content(
             f"In 1-2 lines, explain what the user wants to do: {user_goal}."
         ).text.strip()
-        st.markdown(f"<div style='color:#333;font-size:16px;margin-bottom:10px;'>{task_overview}</div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='color:#f0f0f0;font-size:16px;margin-bottom:10px;'>{task_overview}</div>", unsafe_allow_html=True)
     except Exception:
         pass
 
@@ -88,20 +91,20 @@ if user_goal:
     for cat, cat_label in categories:
         top_tools = get_top_tools(cat, num=2)
         if top_tools:
-            st.markdown(f"<div style='font-weight:bold;font-size:17px;margin-top:15px'>{cat_label}</div>", unsafe_allow_html=True)
+            st.markdown(f"<div style='font-weight:bold;font-size:17px;margin-top:15px;color:#8af;'>{cat_label}</div>", unsafe_allow_html=True)
             cols = st.columns(len(top_tools))
             for i, tool in enumerate(top_tools):
                 with cols[i]:
                     st.markdown(f"""
-                    <div style="background:#f8fafd;border-radius:12px;padding:16px;margin-bottom:16px;box-shadow:0 2px 10px #e6eaf2;">
+                    <div style="background:#191936;border-radius:12px;padding:16px;margin-bottom:16px;box-shadow:0 2px 8px #10101a;">
                         <div style="display:flex;align-items:center;margin-bottom:7px;">
-                            <img src="{tool['Logo URL']}" width="38" height="38" style="border-radius:8px;margin-right:12px;border:1.5px solid #ddd;">
-                            <b><a href="{tool['Link']}" target="_blank" style="color:#1366cc;font-size:1.08rem;">{tool['Tool Name']}</a></b>
+                            <img src="{tool['Logo URL']}" width="38" height="38" style="border-radius:8px;margin-right:12px;border:1.5px solid #444;">
+                            <b><a href="{tool['Link']}" target="_blank" style="color:#6fa1ff;font-size:1.08rem;">{tool['Tool Name']}</a></b>
                         </div>
-                        <div style="color:#197d4c;font-size:15px;"><b>Best For:</b> {tool['Best For']}</div>
-                        <div style="font-size:15px;margin-top:3px;"><i>{tool['Short Description']}</i></div>
-                        <div style="font-size:14px;color:#6079a6;margin-top:2px;"><b>Pricing:</b> {tool['Pricing']}</div>
-                        <div style="font-size:13px;color:#aab6c8;margin-top:3px;">{tool['Tags']}</div>
+                        <div style="color:#7ee287;font-size:15px;"><b>Best For:</b> {tool['Best For']}</div>
+                        <div style="font-size:15px;margin-top:3px;color:#ddd;"><i>{tool['Short Description']}</i></div>
+                        <div style="font-size:14px;color:#5b9acb;margin-top:2px;"><b>Pricing:</b> {tool['Pricing']}</div>
+                        <div style="font-size:13px;color:#999;margin-top:3px;">{tool['Tags']}</div>
                     </div>
                     """, unsafe_allow_html=True)
         else:
