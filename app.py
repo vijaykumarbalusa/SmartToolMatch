@@ -6,23 +6,20 @@ import json
 
 st.set_page_config(page_title="SmartToolMatch", layout="wide", page_icon=":rocket:")
 
-# --- Logo at the top (replace link with your own if desired!) ---
-st.markdown(
-    """
-    <div style='text-align:center; margin-bottom:14px'>
-        <img src="https://cdn-icons-png.flaticon.com/512/3468/3468379.png" width="68" style="margin-bottom:-7px;">
-        <h1 style='margin-bottom:0;color:#1266c2;font-size:2.1rem;font-family:Segoe UI,Arial;'>SmartToolMatch</h1>
-        <div style='font-size:18px;margin-top:0;color:#333;font-weight:500;'>Your AI App Discovery & Guidance Engine</div>
-    </div>
-    """,
-    unsafe_allow_html=True
-)
+# --- App Logo/Branding ---
+st.markdown("""
+<div style='text-align:center; margin-bottom:18px'>
+    <img src="https://cdn-icons-png.flaticon.com/512/3468/3468379.png" width="70" style="margin-bottom:-10px;">
+    <h1 style='margin-bottom:0;color:#1266c2;font-size:2.3rem;font-family:Segoe UI,Arial;'>SmartToolMatch</h1>
+    <div style='font-size:18px;margin-top:0;color:#333;font-weight:500;'>Your AI App Discovery & Guidance Engine</div>
+</div>
+""", unsafe_allow_html=True)
 
 # --- Sidebar ---
 with st.sidebar:
-    st.image("https://avatars.githubusercontent.com/u/103022833?s=280&v=4", width=90)
+    st.image("https://avatars.githubusercontent.com/u/103022833?s=280&v=4", width=88)
     st.markdown(
-        "<b>Built by</b> [Vijay Kumar Balusa](https://www.linkedin.com/in/vijaykumarbalusa/)<br>_Connect with me on LinkedIn!_",
+        "<b>Built by</b> [Vijay Kumar Balusa](https://www.linkedin.com/in/vijay-kumar-bvk/)<br>_Connect with me on LinkedIn!_",
         unsafe_allow_html=True
     )
     st.markdown("---")
@@ -31,17 +28,16 @@ with st.sidebar:
         <div style="font-size:15px;padding-bottom:2px;"><b>About SmartToolMatch</b></div>
         <div style="color:#333;font-size:14px;">
         <ul style="margin-left:-14px;">
-        <li><b>Instantly find the best AI apps</b> for any goal</li>
-        <li>See both a “one-click” top app <b>and</b> a full workflow for your use case</li>
-        <li>Recommendations are always up-to-date from a curated database</li>
-        <li>Powered by Google Gemini, Streamlit, and Google Sheets</li>
-        <li><b>Built for:</b> creators, students, jobseekers, and anyone curious about the best new AI tools</li>
+        <li>Find the <b>top AI apps</b> for any goal</li>
+        <li>See “Best Free”, “Best Paid”, “Best Universal” in each answer</li>
+        <li>Now shows up to <b>2 tools per category</b> for broader choices</li>
+        <li>Built with Gemini, Google Sheets, and Streamlit</li>
         </ul>
         </div>
         """, unsafe_allow_html=True
     )
     st.markdown("---")
-    st.info("💡 Try: 'Plan a trip', 'Generate marketing images', 'Automate my resume', etc.")
+    st.info("💡 Try: 'Plan a trip', 'Write a blog', 'Summarize research', etc.")
 
 # --- Sheets & Gemini Setup ---
 genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
@@ -57,56 +53,78 @@ except Exception as e:
     st.error(f"Google Sheets connection failed: {e}")
     st.stop()
 
-# --- UI: Input ---
+# --- Input ---
 st.markdown("### What do you want to achieve?")
 user_goal = st.text_input("Describe your task or goal (e.g., Plan a trip, Generate a resume, Create a presentation)")
 
+def find_top_tools(category, num=2):
+    # Find the best N tools in each category for the user_goal (via Gemini prompt)
+    # category = 'Free', 'Paid', 'Universal'
+    tools_list = tools_df[tools_df['Type'].str.lower().str.contains(category.lower(), na=False)]
+    if tools_list.empty:
+        return []
+    # Prepare Gemini prompt
+    tools_string = "\n".join([
+        f"{row['Tool Name']} ({row['Category']}): {row['Short Description']}" for _, row in tools_list.iterrows()
+    ])
+    prompt = (
+        f"A user wants to: {user_goal}.\n"
+        f"Here is a list of {category} tools:\n{tools_string}\n\n"
+        f"Pick up to {num} tools from the list that are the best direct solution for the user’s goal. "
+        f"List them in order, and for each, include: Tool Name, a one-line justification, and Short Description."
+    )
+    try:
+        response = gemini_model.generate_content(prompt)
+        tool_lines = [line for line in response.text.strip().split('\n') if line.strip()]
+        # Parse output for tool names, map back to sheet for full info
+        selected = []
+        for line in tool_lines[:num]:
+            # Try to extract tool name (before any punctuation or "-")
+            tool_name = line.split('-')[0].split(':')[0].strip("1234567890. ").strip()
+            if not tool_name: continue
+            row = tools_list[tools_list['Tool Name'].str.lower() == tool_name.lower()]
+            if not row.empty:
+                selected.append(row.iloc[0])
+        return selected
+    except Exception as e:
+        return []
+
+# --- Main Output ---
 if user_goal:
-    col1, col2 = st.columns(2)
-    with col1:
-        st.markdown("#### 🔎 Best App Recommendation")
-        with st.spinner("Gemini is picking the top apps for you..."):
-            tools_string = "\n".join([
-                f"{r['Tool Name']} ({r['Type']}) - {r['Description']}" for _, r in tools_df.iterrows()
-            ])
-            prompt = (
-                f"A user wants to: {user_goal}.\n"
-                f"Available tools:\n{tools_string}\n\n"
-                "1. Briefly explain what this task is.\n"
-                "2. Suggest (if possible): up to one best FREE, one best PAID, and one best UNIVERSAL tool (from the list) "
-                "that can do the task directly. If not available for a type, say so.\n"
-                "3. For each, give: Name (with link), brief description, and what makes it good for this goal.\n"
-                "4. End with a unique Gemini Quick Tip for this task.\n"
-                "Reply in markdown, with clear bullet points and links."
-            )
-            try:
-                response1 = gemini_model.generate_content(prompt)
-                answer1 = response1.text.strip()
-            except Exception as e:
-                answer1 = f"Gemini API error: {e}"
-        st.markdown(answer1)
-
-    with col2:
-        st.markdown("#### 🤖 Step-by-Step AI Guide")
-        with st.spinner("Gemini is creating your workflow..."):
-            prompt2 = (
-                f"A user wants to: {user_goal}.\n"
-                f"Available tools:\n{tools_string}\n\n"
-                "Create a 4-7 step actionable workflow for this goal. For each step, recommend the best single AI tool from the list (name, link, description). "
-                "If no perfect tool, suggest the closest or a universal AI (ChatGPT, Gemini, Claude, etc.). "
-                "Finish with a practical tip for success at the end. Use markdown and keep it very readable."
-            )
-            try:
-                response2 = gemini_model.generate_content(prompt2)
-                answer2 = response2.text.strip()
-            except Exception as e:
-                answer2 = f"Gemini API error: {e}"
-        st.markdown(answer2)
-
-    st.success("Compare a direct top app and a step-by-step workflow—choose what fits your style best!")
-
+    st.markdown("#### ✨ Top AI Tools For Your Goal (Up to 2 per Category)")
+    st.markdown("<div style='margin-bottom:18px;color:#aaa;font-size:14px;'>Powered by Gemini + 300+ curated tools</div>", unsafe_allow_html=True)
+    categories = [("Free", "🟩 Best Free Tools"), ("Paid", "🟦 Best Paid Tools"), ("Universal", "🟪 Best Universal Tools")]
+    for cat, header in categories:
+        top_tools = find_top_tools(cat, num=2)
+        if top_tools:
+            st.markdown(f"<div style='margin-top:10px;'><b>{header}:</b></div>", unsafe_allow_html=True)
+            for tool in top_tools:
+                st.markdown(f"""
+                <div style="background:#f8fafd;border-radius:12px;padding:16px 18px;margin:10px 0;box-shadow:0 2px 10px #e7eef6;">
+                    <div style="display:flex;align-items:center;">
+                        <img src="{tool['Logo URL']}" width="38" height="38" style="border-radius:10px;margin-right:12px;border:1.5px solid #ddd;">
+                        <div>
+                            <b><a href="{tool['Link']}" target="_blank" style="color:#1464cc;font-size:1.07rem;">{tool['Tool Name']}</a></b>
+                            <span style="color:#595a6b;font-size:15px;">({tool['Category']})</span>
+                            <div style="font-size:15px;margin-top:4px;"><i>{tool['Best For']}</i></div>
+                        </div>
+                    </div>
+                    <div style="font-size:15px;margin-top:6px;color:#333;">{tool['Short Description']}</div>
+                    <div style="font-size:13px;color:#5978a2;margin-top:2px;"><b>Pricing:</b> {tool['Pricing']}</div>
+                </div>
+                """, unsafe_allow_html=True)
+        else:
+            st.markdown(f"<span style='color:#aaa;'>No {cat} tools found for this goal.</span>", unsafe_allow_html=True)
+    st.markdown("---")
+    # Gemini Quick Tip
+    try:
+        tip_prompt = f"Share one unique, actionable tip for this user goal: {user_goal} (max 20 words, friendly tone, don't mention tools)."
+        tip_response = gemini_model.generate_content(tip_prompt)
+        st.info("💡 Gemini Quick Tip: " + tip_response.text.strip())
+    except:
+        pass
 else:
-    st.info("Enter your goal above to see both instant app recommendations and step-by-step guidance!")
+    st.info("Enter your goal above to see the best 2 tools in each category!")
 
 st.markdown("---")
-st.caption("© 2025 SmartToolMatch • Built with ❤️ by [Vijay Kumar Balusa](https://www.linkedin.com/in/vijaykumarbalusa/) • Powered by Gemini & Google Sheets")
+st.caption("© 2025 SmartToolMatch • Built with ❤️ by [Vijay Kumar Balusa](www.linkedin.com/in/vijay-kumar-bvk) • Powered by Gemini & Google Sheets")
