@@ -6,7 +6,7 @@ import json
 
 st.set_page_config(page_title="SmartToolMatch", layout="wide", page_icon=":rocket:")
 
-# --- Sidebar (dark/light mode friendly, with logo and LinkedIn) ---
+# --- Sidebar ---
 with st.sidebar:
     st.markdown("""
         <div style="background: linear-gradient(135deg,#252550,#454593 80%); border-radius:16px; padding:18px 14px 14px 14px;">
@@ -31,7 +31,7 @@ with st.sidebar:
         </div>
     """, unsafe_allow_html=True)
 
-# --- Main branding and title ---
+# --- Branding and Title ---
 st.markdown("""
 <div style='text-align:center; margin-bottom:18px'>
     <img src="https://cdn-icons-png.flaticon.com/512/3468/3468379.png" width="80" style="margin-bottom:-10px;box-shadow:0 2px 8px #1a1a2b25;border-radius:20px;">
@@ -50,6 +50,7 @@ try:
     worksheet = gc.open_by_url(SHEET_URL).sheet1
     tools_data = worksheet.get_all_records()
     tools_df = pd.DataFrame(tools_data)
+    tools_df.columns = [col.strip() for col in tools_df.columns]  # remove extra spaces from columns!
 except Exception as e:
     st.error(f"Google Sheets connection failed: {e}")
     st.stop()
@@ -59,17 +60,31 @@ st.markdown("### What do you want to achieve?")
 user_goal = st.text_input(
     "Describe your task or goal (e.g., Plan a trip, Generate a resume, Create a presentation)")
 
-def get_top_tools(category, num=2):
-    filtered = tools_df[tools_df['Type'].str.lower().str.contains(category.lower(), na=False)].copy()
-    if filtered.empty:
+# --- Gemini tool selection function ---
+def gemini_tool_picker(goal, df, category, topn=2):
+    df_cat = df[df["Type"].str.lower().str.contains(category.lower(), na=False)]
+    if df_cat.empty:
         return []
-    score = (
-        filtered['Best For'].str.lower().str.contains(user_goal.lower(), na=False).astype(int)
-        + filtered['Short Description'].str.lower().str.contains(user_goal.lower(), na=False).astype(int)
+    # Prepare tool data summary for Gemini
+    tools_brief = "\n".join([f"{row['Tool Name']}: {row['Best For']} | {row['Short Description']}" for _, row in df_cat.iterrows()])
+    prompt = (
+        f"User wants to: {goal}\n"
+        f"From this list of tools (each line: Tool Name: Best For | Short Description):\n{tools_brief}\n\n"
+        f"Pick the {topn} best tools for this user's goal (from this list only). For each, reply in this exact format:\n"
+        f"Tool Name | Why it's a great match for this goal (1 line)\n"
+        f"Only return {topn} tools, no explanation, no intro."
     )
-    filtered['score'] = score
-    top_tools = filtered.sort_values("score", ascending=False).head(num)
-    return [row for _, row in top_tools.iterrows()]
+    try:
+        resp = gemini_model.generate_content(prompt).text.strip()
+        names = []
+        for line in resp.split('\n'):
+            parts = line.split('|')
+            if len(parts) >= 1:
+                tool_name = parts[0].strip()
+                if tool_name: names.append(tool_name)
+        return [row for _, row in df_cat.iterrows() if row["Tool Name"] in names][:topn]
+    except Exception as e:
+        return []
 
 # --- Best App Recommendation + AI Assistant Answer ---
 if user_goal:
@@ -99,7 +114,22 @@ if user_goal:
     default_logo = "https://cdn-icons-png.flaticon.com/512/3468/3468379.png"
 
     for cat, cat_label in categories:
-        top_tools = get_top_tools(cat, num=2)
+        # Gemini-powered matching!
+        top_tools = gemini_tool_picker(user_goal, tools_df, cat, topn=2)
+        if not top_tools:  # fallback to weak logic if Gemini fails
+            def get_top_tools(category, num=2):
+                filtered = tools_df[tools_df['Type'].str.lower().str.contains(category.lower(), na=False)].copy()
+                if filtered.empty:
+                    return []
+                score = (
+                    filtered['Best For'].str.lower().str.contains(user_goal.lower(), na=False).astype(int)
+                    + filtered['Short Description'].str.lower().str.contains(user_goal.lower(), na=False).astype(int)
+                )
+                filtered['score'] = score
+                top_tools = filtered.sort_values("score", ascending=False).head(num)
+                return [row for _, row in top_tools.iterrows()]
+            top_tools = get_top_tools(cat, num=2)
+
         if top_tools:
             st.markdown(f"<div style='font-weight:bold;font-size:18px;margin-top:15px;color:#8af;'>{cat_label}</div>", unsafe_allow_html=True)
             cols = st.columns(len(top_tools))
