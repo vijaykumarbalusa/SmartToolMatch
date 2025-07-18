@@ -33,8 +33,8 @@ with st.sidebar:
 
 # --- Branding and Title ---
 st.markdown("""
-<div style='text-align:center; margin-bottom:18px'>
-    <img src="https://cdn-icons-png.flaticon.com/512/3468/3468379.png" width="80" style="margin-bottom:-10px;box-shadow:0 2px 8px #1a1a2b25;border-radius:20px;">
+<div style='text-align:center; margin-bottom:22px'>
+    <img src="https://cdn-icons-png.flaticon.com/512/3468/3468379.png" width="84" style="margin-bottom:-10px;box-shadow:0 2px 8px #1a1a2b25;border-radius:22px;">
     <h1 style='margin-bottom:0;color:#1266c2;font-size:2.3rem;font-family:Segoe UI,Arial;'>SmartToolMatch</h1>
     <div style='font-size:18px;margin-top:0;color:#bbb;font-weight:500;'>Your AI App Discovery & Guidance Engine</div>
 </div>
@@ -50,23 +50,31 @@ try:
     worksheet = gc.open_by_url(SHEET_URL).sheet1
     tools_data = worksheet.get_all_records()
     tools_df = pd.DataFrame(tools_data)
-    tools_df.columns = [col.strip() for col in tools_df.columns]  # remove extra spaces from columns!
+    tools_df.columns = [col.strip() for col in tools_df.columns]
 except Exception as e:
     st.error(f"Google Sheets connection failed: {e}")
     st.stop()
 
-# --- User Input ---
-st.markdown("### What do you want to achieve?")
+# --- User Input (centered & large) ---
+st.markdown("""
+    <div style="text-align:center; margin-bottom:0;">
+        <input id="user_goal_input" name="user_goal" placeholder="What do you want to achieve? (e.g., Plan a trip, Generate a resume, Create a presentation)" 
+            style="width:80%;max-width:530px;padding:15px 18px;font-size:1.18rem;border-radius:10px;border:2px solid #277af6;outline:none;box-shadow:0 2px 10px #b3c9ff30; background:#1c1c33;color:#e8edfc;" 
+            onkeydown="if(event.key==='Enter'){document.querySelector('button[data-baseweb=button]').click();}">
+    </div>
+    <script>
+    let input = window.parent.document.querySelector('input[name=user_goal]');
+    if (input) {input.value = ""; input.focus();}
+    </script>
+""", unsafe_allow_html=True)
 user_goal = st.text_input(
-    "Describe your task or goal (e.g., Plan a trip, Generate a resume, Create a presentation)")
+    "Describe your task or goal (e.g., Plan a trip, Generate a resume, Create a presentation)", key="user_goal")
 
-# --- Gemini tool selection function ---
-def gemini_tool_picker(goal, df, category, topn=2):
-    df_cat = df[df["Type"].str.lower().str.contains(category.lower(), na=False)]
-    if df_cat.empty:
+# --- Gemini-powered tool selection function ---
+def gemini_tool_picker(goal, df, topn=2):
+    if df.empty:
         return []
-    # Prepare tool data summary for Gemini
-    tools_brief = "\n".join([f"{row['Tool Name']}: {row['Best For']} | {row['Short Description']}" for _, row in df_cat.iterrows()])
+    tools_brief = "\n".join([f"{row['Tool Name']}: {row['Best For']} | {row['Short Description']}" for _, row in df.iterrows()])
     prompt = (
         f"User wants to: {goal}\n"
         f"From this list of tools (each line: Tool Name: Best For | Short Description):\n{tools_brief}\n\n"
@@ -81,89 +89,100 @@ def gemini_tool_picker(goal, df, category, topn=2):
             parts = line.split('|')
             if len(parts) >= 1:
                 tool_name = parts[0].strip()
-                if tool_name: names.append(tool_name)
-        return [row for _, row in df_cat.iterrows() if row["Tool Name"] in names][:topn]
+                if tool_name:
+                    names.append(tool_name)
+        return [row for _, row in df.iterrows() if row["Tool Name"] in names][:topn]
     except Exception as e:
         return []
 
-# --- Best App Recommendation + AI Assistant Answer ---
+# --- Main Layout: 2 columns ---
 if user_goal:
-    # --- AI Assistant (ChatGPT/Gemini style) response ---
-    try:
-        ai_response = gemini_model.generate_content(
-            f"You are a helpful, positive AI assistant. The user wants to: {user_goal}. "
-            "Give a practical, step-by-step answer (5–8 sentences), mentioning where AI helps. "
-            "Don't just list tools—be insightful, warm, and actionable. Start with a friendly greeting."
-        ).text.strip()
-        st.markdown(f"""
-        <div style="background:#181830;padding:18px 18px 15px 18px;border-radius:15px;margin-bottom:28px;
-            box-shadow:0 3px 16px #23234540;color:#e8ebfa;font-size:1.15rem;">
-            {ai_response}
+    col1, col2 = st.columns([1.15, 1.05], gap="large")
+
+    # ---- LEFT: Tool Recommender ----
+    with col1:
+        st.markdown("""
+        <div style='font-size:1.4rem;font-weight:700;margin-bottom:5px;color:#7cd4fe;letter-spacing:-1px;'>
+            🔎 Best AI App Recommendations
         </div>
         """, unsafe_allow_html=True)
-    except Exception:
-        pass
 
-    st.markdown("#### 🔎 Best App Recommendation")
+        default_logo = "https://cdn-icons-png.flaticon.com/512/3468/3468379.png"
+        already_picked = set()
+        category_map = [
+            ("Free", "🟩 Free Tools"),
+            ("Paid", "🟦 Paid Tools"),
+            ("Universal", "🟪 Universal Tools"),
+        ]
 
-    categories = [
-        ("Free", "🟩 Free Tools"),
-        ("Paid", "🟦 Paid Tools"),
-        ("Universal", "🟪 Universal Tools"),
-    ]
-    default_logo = "https://cdn-icons-png.flaticon.com/512/3468/3468379.png"
-
-    for cat, cat_label in categories:
-        # Gemini-powered matching!
-        top_tools = gemini_tool_picker(user_goal, tools_df, cat, topn=2)
-        if not top_tools:  # fallback to weak logic if Gemini fails
-            def get_top_tools(category, num=2):
-                filtered = tools_df[tools_df['Type'].str.lower().str.contains(category.lower(), na=False)].copy()
-                if filtered.empty:
-                    return []
+        for cat, cat_label in category_map:
+            df_cat = tools_df[
+                tools_df['Type'].str.lower().str.contains(cat.lower(), na=False) &
+                ~tools_df['Tool Name'].isin(already_picked)
+            ]
+            top_tools = gemini_tool_picker(user_goal, df_cat, topn=2)
+            if not top_tools and not df_cat.empty:
+                filtered = df_cat.copy()
                 score = (
                     filtered['Best For'].str.lower().str.contains(user_goal.lower(), na=False).astype(int)
                     + filtered['Short Description'].str.lower().str.contains(user_goal.lower(), na=False).astype(int)
                 )
                 filtered['score'] = score
-                top_tools = filtered.sort_values("score", ascending=False).head(num)
-                return [row for _, row in top_tools.iterrows()]
-            top_tools = get_top_tools(cat, num=2)
-
-        if top_tools:
-            st.markdown(f"<div style='font-weight:bold;font-size:18px;margin-top:15px;color:#8af;'>{cat_label}</div>", unsafe_allow_html=True)
-            cols = st.columns(len(top_tools))
-            for i, tool in enumerate(top_tools):
-                # --- LOGO HANDLING WITH FALLBACK, BIGGER LOGOS ---
-                tool_logo = tool['Logo URL']
-                if not (isinstance(tool_logo, str) and tool_logo.lower().endswith(('.png', '.jpg', '.jpeg', '.webp'))):
-                    tool_logo = default_logo
-                with cols[i]:
-                    st.markdown(f"""
-                    <div style="background:#191936;border-radius:16px;padding:19px;margin-bottom:18px;box-shadow:0 2px 10px #10101a40;transition:box-shadow 0.18s;">
-                        <div style="display:flex;align-items:center;margin-bottom:11px;">
-                            <img src="{tool_logo}" width="54" height="54" style="border-radius:13px;margin-right:15px;border:2px solid #444;box-shadow:0 3px 8px #20204525;">
-                            <div>
-                                <b><a href="{tool['Link']}" target="_blank" style="color:#6fa1ff;font-size:1.16rem;">{tool['Tool Name']}</a></b>
-                                <div style="font-size:14px;color:#a4adc4;font-weight:400;">({tool['Category']})</div>
+                top_tools = [row for _, row in filtered.sort_values("score", ascending=False).head(2).iterrows()]
+            if top_tools:
+                already_picked.update([tool["Tool Name"] for tool in top_tools])
+                st.markdown(f"<div style='font-weight:600;font-size:17px;margin-top:16px;color:#fff;text-shadow:0 1px 5px #1c213150;'>{cat_label}</div>", unsafe_allow_html=True)
+                cols = st.columns(len(top_tools))
+                for i, tool in enumerate(top_tools):
+                    tool_logo = tool['Logo URL']
+                    if not (isinstance(tool_logo, str) and tool_logo.lower().endswith(('.png', '.jpg', '.jpeg', '.webp'))):
+                        tool_logo = default_logo
+                    with cols[i]:
+                        st.markdown(f"""
+                        <div style="background:#181830;border-radius:15px;padding:18px 12px 15px 12px;margin-bottom:15px;box-shadow:0 2px 12px #10101a30;">
+                            <div style="display:flex;align-items:center;margin-bottom:10px;">
+                                <img src="{tool_logo}" width="52" height="52" style="border-radius:11px;margin-right:12px;border:2px solid #444;">
+                                <div>
+                                    <b><a href="{tool['Link']}" target="_blank" style="color:#73c9fa;font-size:1.13rem;">{tool['Tool Name']}</a></b>
+                                    <div style="font-size:14px;color:#a4adc4;">({tool['Category']})</div>
+                                </div>
                             </div>
+                            <div style="color:#80e6a0;font-size:15px;"><b>Best For:</b> {tool['Best For']}</div>
+                            <div style="font-size:15px;margin-top:4px;color:#dde;"><i>{tool['Short Description']}</i></div>
+                            <div style="font-size:14px;color:#74acef;margin-top:3px;"><b>Pricing:</b> {tool['Pricing']}</div>
+                            <div style="font-size:13px;color:#b2b5c6;margin-top:3px;">{tool['Tags']}</div>
                         </div>
-                        <div style="color:#7ee287;font-size:15.5px;"><b>Best For:</b> {tool['Best For']}</div>
-                        <div style="font-size:15.5px;margin-top:5px;color:#ddd;"><i>{tool['Short Description']}</i></div>
-                        <div style="font-size:14px;color:#5b9acb;margin-top:5px;"><b>Pricing:</b> {tool['Pricing']}</div>
-                        <div style="font-size:13px;color:#b2b5c6;margin-top:5px;">{tool['Tags']}</div>
-                    </div>
-                    """, unsafe_allow_html=True)
-        else:
-            st.markdown(f"<span style='color:#bbb'>No tools found for {cat}.</span>", unsafe_allow_html=True)
+                        """, unsafe_allow_html=True)
+            else:
+                st.markdown(f"<span style='color:#bbb'>No tools found for {cat}.</span>", unsafe_allow_html=True)
 
-    # --- Gemini quick tip (optional) ---
-    try:
-        tip_prompt = f"Give a 1-line actionable tip for this task: {user_goal}."
-        tip_response = gemini_model.generate_content(tip_prompt)
-        st.info("💡 Gemini Quick Tip: " + tip_response.text.strip())
-    except:
-        pass
+    # ---- RIGHT: Gemini/AI Assistant ----
+    with col2:
+        st.markdown("""
+        <div style='font-size:1.3rem;font-weight:700;margin-bottom:9px;margin-top:2px;color:#f6baff;letter-spacing:-1px;'>
+            🤖 AI Assistant Advice
+        </div>
+        """, unsafe_allow_html=True)
+        try:
+            ai_response = gemini_model.generate_content(
+                f"You are a helpful, positive AI assistant. The user wants to: {user_goal}. "
+                "Give a practical, step-by-step answer (5–8 sentences), mentioning where AI helps. "
+                "Don't just list tools—be insightful, warm, and actionable. Start with a friendly greeting."
+            ).text.strip()
+            st.markdown(f"""
+            <div style="background:#222137;padding:18px 20px 15px 17px;border-radius:16px;margin-bottom:20px;box-shadow:0 2px 14px #25023c22;">
+                <span style="font-size:1.09rem;color:#eaeaf4;">{ai_response}</span>
+            </div>
+            """, unsafe_allow_html=True)
+        except Exception as e:
+            st.warning("Gemini AI response unavailable right now.")
+
+        try:
+            tip_prompt = f"Give a 1-line actionable tip for this task: {user_goal}."
+            tip_response = gemini_model.generate_content(tip_prompt)
+            st.info("💡 Gemini Quick Tip: " + tip_response.text.strip())
+        except:
+            pass
 
 else:
     st.info("Enter your goal above to see the best tools and assistant advice!")
