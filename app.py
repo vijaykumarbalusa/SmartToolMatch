@@ -12,9 +12,10 @@ with st.sidebar:
         <div style="background: linear-gradient(135deg,#252550,#454593 80%); border-radius:16px; padding:18px 14px 14px 14px;">
             <div style="display:flex;align-items:center;">
                 <img src="https://avatars.githubusercontent.com/u/103022833?s=280&v=4" width="64" style="border-radius:14px;margin-right:12px;border:2px solid #fff;">
-                <div>
-                    <span style="color:#fff;font-weight:bold;">Built by <a href="https://www.linkedin.com/in/vijay-kumar-bvk" style="color:#ffd858;" target="_blank">Vijay Kumar Balusa</a></span>
-                    <div style="font-size:13px;color:#ddd;">Connect with me on LinkedIn!</div>
+                <div style="margin-top:2px;">
+                    <span style="color:#fff;font-weight:bold;">Built by</span><br>
+                    <a href="https://www.linkedin.com/in/vijay-kumar-bvk" style="color:#ffd858;text-decoration:underline;font-weight:bold;" target="_blank">Vijay Kumar Balusa</a>
+                    <div style="font-size:13px;color:#ddd;margin-top:2px;">Connect with me on LinkedIn!</div>
                 </div>
             </div>
             <hr style="margin:12px 0 8px 0; border:0; border-top:1.5px solid #666;">
@@ -55,20 +56,11 @@ except Exception as e:
     st.error(f"Google Sheets connection failed: {e}")
     st.stop()
 
-# --- User Input (centered & large) ---
-st.markdown("""
-    <div style="text-align:center; margin-bottom:0;">
-        <input id="user_goal_input" name="user_goal" placeholder="What do you want to achieve? (e.g., Plan a trip, Generate a resume, Create a presentation)" 
-            style="width:80%;max-width:530px;padding:15px 18px;font-size:1.18rem;border-radius:10px;border:2px solid #277af6;outline:none;box-shadow:0 2px 10px #b3c9ff30; background:#1c1c33;color:#e8edfc;" 
-            onkeydown="if(event.key==='Enter'){document.querySelector('button[data-baseweb=button]').click();}">
-    </div>
-    <script>
-    let input = window.parent.document.querySelector('input[name=user_goal]');
-    if (input) {input.value = ""; input.focus();}
-    </script>
-""", unsafe_allow_html=True)
+# --- User Input (single functional search bar) ---
 user_goal = st.text_input(
-    "Describe your task or goal (e.g., Plan a trip, Generate a resume, Create a presentation)", key="user_goal")
+    "Describe your task or goal (e.g., Plan a trip, Generate a resume, Create a presentation)", key="user_goal", 
+    help="This will power both AI recommendations and Gemini's step-by-step advice"
+)
 
 # --- Gemini-powered tool selection function ---
 def gemini_tool_picker(goal, df, topn=2):
@@ -91,7 +83,14 @@ def gemini_tool_picker(goal, df, topn=2):
                 tool_name = parts[0].strip()
                 if tool_name:
                     names.append(tool_name)
-        return [row for _, row in df.iterrows() if row["Tool Name"] in names][:topn]
+        # Remove any duplicates in names list:
+        seen = set()
+        unique_names = []
+        for n in names:
+            if n not in seen:
+                unique_names.append(n)
+                seen.add(n)
+        return [row for _, row in df.iterrows() if row["Tool Name"] in unique_names][:topn]
     except Exception as e:
         return []
 
@@ -121,19 +120,26 @@ if user_goal:
                 ~tools_df['Tool Name'].isin(already_picked)
             ]
             top_tools = gemini_tool_picker(user_goal, df_cat, topn=2)
-            if not top_tools and not df_cat.empty:
+            # Fallback if Gemini picks same tool twice or returns <2:
+            unique_tools = []
+            names_seen = set()
+            for tool in top_tools:
+                if tool["Tool Name"] not in names_seen:
+                    unique_tools.append(tool)
+                    names_seen.add(tool["Tool Name"])
+            if not unique_tools and not df_cat.empty:
                 filtered = df_cat.copy()
                 score = (
                     filtered['Best For'].str.lower().str.contains(user_goal.lower(), na=False).astype(int)
                     + filtered['Short Description'].str.lower().str.contains(user_goal.lower(), na=False).astype(int)
                 )
                 filtered['score'] = score
-                top_tools = [row for _, row in filtered.sort_values("score", ascending=False).head(2).iterrows()]
-            if top_tools:
-                already_picked.update([tool["Tool Name"] for tool in top_tools])
+                unique_tools = [row for _, row in filtered.sort_values("score", ascending=False).head(2).iterrows()]
+            if unique_tools:
+                already_picked.update([tool["Tool Name"] for tool in unique_tools])
                 st.markdown(f"<div style='font-weight:600;font-size:17px;margin-top:16px;color:#fff;text-shadow:0 1px 5px #1c213150;'>{cat_label}</div>", unsafe_allow_html=True)
-                cols = st.columns(len(top_tools))
-                for i, tool in enumerate(top_tools):
+                cols = st.columns(len(unique_tools))
+                for i, tool in enumerate(unique_tools):
                     tool_logo = tool['Logo URL']
                     if not (isinstance(tool_logo, str) and tool_logo.lower().endswith(('.png', '.jpg', '.jpeg', '.webp'))):
                         tool_logo = default_logo
