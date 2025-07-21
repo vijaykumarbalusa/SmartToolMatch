@@ -1,5 +1,10 @@
 # 🚀 SmartToolMatch
 
+[![TRY IT LIVE](https://img.shields.io/badge/TRY%20IT%20LIVE-Streamlit-4B8DF8?logo=streamlit)](https://your-live-demo-link)
+[![Google Sheet](https://img.shields.io/badge/Google%20Sheet-Database-34A853?logo=googlesheets&logoColor=white)](https://docs.google.com/spreadsheets/d/13KVDHGDG7xITg7gLor1LphhSHJEI-_LGmy3NDUVDNi8/edit?usp=sharing)
+[![LinkedIn](https://img.shields.io/badge/Connect-Vijay%20Kumar%20Balusa-0A66C2?logo=linkedin&logoColor=white)](https://www.linkedin.com/in/vijay-kumar-bvk)
+
+
 **AI-powered app discovery for whatever you want to build, automate, or learn.**
 
 ---
@@ -45,6 +50,8 @@ pip install -r requirements.txt
 streamlit run app.py
 Before you run:
 
+---
+
 Get your Gemini API key
 
 Set up a Google Service Account
@@ -56,7 +63,7 @@ Just edit the Google Sheet and your app updates in seconds.
 
 🙋‍♂️ About Me
 Made by Vijay Kumar Balusa.
-Let’s connect on [![LinkedIn](https://img.shields.io/badge/LinkedIn-Connect-blue?logo=linkedin&logoColor=white)](https://www.linkedin.com/in/vijay-kumar-bvk)
+Let’s connect on [LinkedIn](https://www.linkedin.com/in/vijay-kumar-bvk)!
 
 
 If you find this useful, please star the repo and share it. Thanks for checking out SmartToolMatch!
