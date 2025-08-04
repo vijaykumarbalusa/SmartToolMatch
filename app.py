@@ -253,7 +253,4 @@ else:
     st.info("Enter your goal above to see the best tools and assistant advice!")
 
 st.markdown("---")
-<<<<<<< HEAD
-st.caption("© 2025 SmartToolMatch • Built with ❤️ by [Vijay Kumar Balusa](https://www.linkedin.com/in/vijay-kumar-bvk) • Powered by Gemini & Google Sheets")
-=======
 st.caption("© 2025 SmartToolMatch • Built with ❤️ by [Vijay Kumar Balusa](https://www.linkedin.com/in/vijay-kumar-bvk) • Powered by Gemini & Google Sheets")
